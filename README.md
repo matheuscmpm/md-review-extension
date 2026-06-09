@@ -1,6 +1,6 @@
 # Markdown Rich Review for GitHub Pull Requests
 
-A Chrome / Microsoft Edge / Mozilla Firefox extension (MV3) that enhances GitHub Pull Request Files changed views for Markdown files.
+A Chrome / Microsoft Edge / Mozilla Firefox extension (MV3-added) that enhances GitHub Pull Request Files changed views for Markdown files.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
