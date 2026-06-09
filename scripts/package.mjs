@@ -1,15 +1,14 @@
 /**
- * scripts/package.mjs — Creates a distributable .zip of the extension
- * suitable for Chrome Web Store / Edge Add-ons upload or manual sideloading.
+ * scripts/package.mjs — Creates distributable browser packages for the extension.
  *
  * Run:  npm run package
  * Output: dist/markdown-rich-review-<version>.zip
+ *         dist/markdown-rich-review-firefox-<version>.xpi
  */
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "fs";
 import { join, dirname, relative } from "path";
 import { fileURLToPath } from "url";
-import { createDeflateRaw } from "zlib";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -17,7 +16,7 @@ const DIST = join(ROOT, "dist");
 
 const manifest = JSON.parse(readFileSync(join(ROOT, "manifest.json"), "utf8"));
 const version = manifest.version;
-const zipName = `markdown-rich-review-${version}.zip`;
+const target = (process.argv[2] || "all").toLowerCase();
 
 // Files/directories to include in the extension package
 const INCLUDE = [
@@ -158,11 +157,27 @@ function crc32(buf) {
 }
 
 const files = collectFiles(INCLUDE);
-console.log(`Packaging ${files.length} files...`);
+console.log(`Packaging ${files.length} files for target: ${target}...`);
 files.forEach((f) => console.log(`  ${f.name}`));
 
 const zipBuffer = createZipBuffer(files);
-const zipPath = join(DIST, zipName);
-writeFileSync(zipPath, zipBuffer);
+const packages = {
+  chrome: { name: `markdown-rich-review-${version}.zip`, label: "Chrome / Edge" },
+  firefox: { name: `markdown-rich-review-firefox-${version}.xpi`, label: "Firefox" },
+};
 
-console.log(`\n✅ Extension packaged: ${zipPath} (${(zipBuffer.length / 1024).toFixed(1)} KB)`);
+const targets = target === "all"
+  ? Object.keys(packages)
+  : Object.keys(packages).filter((name) => name === target);
+
+if (!targets.length) {
+  throw new Error(`Unknown packaging target "${target}". Use one of: all, chrome, firefox.`);
+}
+
+for (const packageTarget of targets) {
+  const packagePath = join(DIST, packages[packageTarget].name);
+  writeFileSync(packagePath, zipBuffer);
+  console.log(
+    `\n✅ ${packages[packageTarget].label} package: ${packagePath} (${(zipBuffer.length / 1024).toFixed(1)} KB)`
+  );
+}

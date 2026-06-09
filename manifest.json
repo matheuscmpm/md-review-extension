@@ -35,6 +35,12 @@
     },
     "default_title": "Markdown Rich Review for GitHub Pull Requests"
   },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "md-review-extension@matheuscmpm.github.io",
+      "strict_min_version": "121.0"
+    }
+  },
   "web_accessible_resources": [
     {
       "resources": ["icons/*"],

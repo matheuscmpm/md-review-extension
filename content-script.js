@@ -11,6 +11,49 @@
   "use strict";
 
   const { isPRFilesPage, qs, qsa, createElement, debounce } = DomHelpers;
+  const extensionApi = globalThis.browser ?? globalThis.chrome;
+  const usesPromiseApi = typeof globalThis.browser !== "undefined";
+
+  function _readLocalStorage(defaults, onSuccess, onError = () => {}) {
+    if (!extensionApi?.storage?.local?.get) {
+      onError();
+      return;
+    }
+
+    if (usesPromiseApi) {
+      extensionApi.storage.local.get(defaults).then(onSuccess).catch(() => onError());
+      return;
+    }
+
+    extensionApi.storage.local.get(defaults, (items) => {
+      if (extensionApi.runtime?.lastError) {
+        onError();
+        return;
+      }
+
+      onSuccess(items);
+    });
+  }
+
+  function _listenLocalStorageChanges(onChange) {
+    extensionApi?.storage?.onChanged?.addListener?.((changes, areaName) => {
+      if (areaName !== "local") return;
+      onChange(changes);
+    });
+  }
+
+  function _sendRuntimeMessage(message) {
+    if (!extensionApi?.runtime?.sendMessage) return;
+
+    try {
+      const result = extensionApi.runtime.sendMessage(message);
+      if (usesPromiseApi && typeof result?.catch === "function") {
+        result.catch(() => {});
+      }
+    } catch {
+      // Ignore icon update failures in page contexts where the runtime bridge is unavailable.
+    }
+  }
 
   /* ---------------------------------------------------------------- */
   /*  Parse embedded payload                                           */
@@ -468,9 +511,7 @@
   }
 
   function _loadThemeModePreference() {
-    if (!chrome?.storage?.local?.get) return;
-    chrome.storage.local.get({ [THEME_MODE_STORAGE_KEY]: DEFAULT_THEME_MODE }, (items) => {
-      if (chrome.runtime?.lastError) return;
+    _readLocalStorage({ [THEME_MODE_STORAGE_KEY]: DEFAULT_THEME_MODE }, (items) => {
       _setThemeMode(items?.[THEME_MODE_STORAGE_KEY]);
     });
   }
@@ -522,14 +563,11 @@
     document.addEventListener("turbo:load", _syncThemeMode);
     document.addEventListener("pjax:end", _syncThemeMode);
 
-    if (chrome?.storage?.onChanged) {
-      chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName !== "local") return;
-        const change = changes?.[THEME_MODE_STORAGE_KEY];
-        if (!change) return;
-        _setThemeMode(change.newValue);
-      });
-    }
+    _listenLocalStorageChanges((changes) => {
+      const change = changes?.[THEME_MODE_STORAGE_KEY];
+      if (!change) return;
+      _setThemeMode(change.newValue);
+    });
   }
 
   function _createCommentBadgeIcon(size = 16) {
@@ -842,21 +880,16 @@
   }
 
   function _loadScrollBehaviorPreference() {
-    if (!chrome?.storage?.local?.get) return;
-    chrome.storage.local.get({ [SCROLL_BEHAVIOR_STORAGE_KEY]: DEFAULT_SCROLL_BEHAVIOR }, (items) => {
-      if (chrome.runtime?.lastError) return;
+    _readLocalStorage({ [SCROLL_BEHAVIOR_STORAGE_KEY]: DEFAULT_SCROLL_BEHAVIOR }, (items) => {
       _setScrollBehavior(items?.[SCROLL_BEHAVIOR_STORAGE_KEY]);
     });
   }
 
-  if (chrome?.storage?.onChanged) {
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== "local") return;
-      const change = changes?.[SCROLL_BEHAVIOR_STORAGE_KEY];
-      if (!change) return;
-      _setScrollBehavior(change.newValue);
-    });
-  }
+  _listenLocalStorageChanges((changes) => {
+    const change = changes?.[SCROLL_BEHAVIOR_STORAGE_KEY];
+    if (!change) return;
+    _setScrollBehavior(change.newValue);
+  });
 
   _loadScrollBehaviorPreference();
 
@@ -1881,34 +1914,26 @@
   }
 
   function _loadExtensionEnabledPreference() {
-    if (!chrome?.storage?.local?.get) {
-      _extensionStateLoaded = true;
-      _applyExtensionEnabledState();
-      return;
-    }
-
-    chrome.storage.local.get({ [TOGGLE_STORAGE_KEY]: DEFAULT_EXTENSION_ENABLED }, (items) => {
-      if (chrome.runtime?.lastError) {
+    _readLocalStorage(
+      { [TOGGLE_STORAGE_KEY]: DEFAULT_EXTENSION_ENABLED },
+      (items) => {
+        _extensionEnabled = items?.[TOGGLE_STORAGE_KEY] !== false;
         _extensionStateLoaded = true;
         _applyExtensionEnabledState();
-        return;
+      },
+      () => {
+        _extensionStateLoaded = true;
+        _applyExtensionEnabledState();
       }
-
-      _extensionEnabled = items?.[TOGGLE_STORAGE_KEY] !== false;
-      _extensionStateLoaded = true;
-      _applyExtensionEnabledState();
-    });
+    );
   }
 
-  if (chrome?.storage?.onChanged) {
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== "local") return;
-      const change = changes?.[TOGGLE_STORAGE_KEY];
-      if (!change) return;
-      _extensionEnabled = change.newValue !== false;
-      _applyExtensionEnabledState();
-    });
-  }
+  _listenLocalStorageChanges((changes) => {
+    const change = changes?.[TOGGLE_STORAGE_KEY];
+    if (!change) return;
+    _extensionEnabled = change.newValue !== false;
+    _applyExtensionEnabledState();
+  });
 
   let _pauseInProgress = false;
 
@@ -1958,11 +1983,7 @@
 
   function _updateActionIcon(isRelevantPage) {
     const active = Boolean(isRelevantPage && _isExtensionEnabled());
-    try {
-      chrome?.runtime?.sendMessage?.({ type: "md-review-set-icon", active });
-    } catch {
-      // Ignore icon update failures in page contexts where the runtime bridge is unavailable.
-    }
+    _sendRuntimeMessage({ type: "md-review-set-icon", active });
   }
 
   function _applyExtensionEnabledState() {

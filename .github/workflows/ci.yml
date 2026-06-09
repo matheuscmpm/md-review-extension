@@ -28,7 +28,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: markdown-rich-review-latest
-          path: dist/*.zip
+          path: dist/*
 
       - name: Update "latest" release
         uses: softprops/action-gh-release@v2
@@ -42,6 +42,6 @@ jobs:
             **Date:** ${{ github.event.head_commit.timestamp }}
 
             Download the `.zip` below, unzip, and load as an unpacked extension.
-          files: dist/*.zip
+          files: dist/*
           prerelease: true
           make_latest: false
