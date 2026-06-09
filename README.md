@@ -37,7 +37,7 @@ A Chrome / Microsoft Edge / Mozilla Firefox extension (MV3) that enhances GitHub
 
 4. Load the extension from this project directory:
    - Edge / Chrome: click **Load unpacked**
-   - Firefox: click **Load Temporary Add-on** and select `/home/runner/work/md-review-extension/md-review-extension/matheuscmpm/md-review-extension/manifest.json`
+   - Firefox: click **Load Temporary Add-on** and select the `manifest.json` file from the project directory
 
 5. Navigate to any GitHub PR -> Files changed tab.
 
