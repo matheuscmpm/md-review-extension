@@ -2,8 +2,10 @@
   "name": "markdown-rich-review",
   "version": "2.4.0",
   "private": true,
-  "description": "Markdown Rich Review — Chrome/Edge MV3 browser extension for reviewing Markdown files in GitHub PR diffs.",
+  "description": "Markdown Rich Review — Chrome/Edge/Firefox MV3 browser extension for reviewing Markdown files in GitHub PR diffs.",
   "scripts": {
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "package:chrome": "node scripts/package.mjs chrome",
+    "package:firefox": "node scripts/package.mjs firefox"
   }
 }

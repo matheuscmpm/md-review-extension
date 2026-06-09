@@ -1,19 +1,49 @@
 const SCROLL_BEHAVIOR_STORAGE_KEY = "md-review-scroll-behavior";
 const THEME_MODE_STORAGE_KEY = "md-review-theme-mode";
 const EXTENSION_ENABLED_STORAGE_KEY = "md-review-extension-enabled";
+const extensionApi = globalThis.browser ?? globalThis.chrome;
+const usesPromiseApi = typeof globalThis.browser !== "undefined";
+
+function loadOptions(defaults, onLoad) {
+  if (!extensionApi?.storage?.local?.get) {
+    onLoad(defaults);
+    return;
+  }
+
+  if (usesPromiseApi) {
+    extensionApi.storage.local.get(defaults).then(onLoad).catch(() => onLoad(defaults));
+    return;
+  }
+
+  extensionApi.storage.local.get(defaults, (items) => {
+    if (extensionApi.runtime?.lastError) {
+      onLoad(defaults);
+      return;
+    }
+
+    onLoad(items);
+  });
+}
 
 function setOption(key, value) {
-  chrome.storage.local.set({ [key]: value });
+  if (!extensionApi?.storage?.local?.set) return;
+
+  if (usesPromiseApi) {
+    extensionApi.storage.local.set({ [key]: value }).catch(() => {});
+    return;
+  }
+
+  extensionApi.storage.local.set({ [key]: value });
 }
 
 function loadState() {
-  chrome.storage.local.get(
+  loadOptions(
     {
       [SCROLL_BEHAVIOR_STORAGE_KEY]: "auto",
       [THEME_MODE_STORAGE_KEY]: "auto",
       [EXTENSION_ENABLED_STORAGE_KEY]: true,
     },
-    (items) => {
+    (items = {}) => {
       const enabledCheckbox = document.getElementById("extension-enabled");
       if (enabledCheckbox) {
         enabledCheckbox.checked = items[EXTENSION_ENABLED_STORAGE_KEY] !== false;
@@ -30,7 +60,7 @@ function loadState() {
           ? items[THEME_MODE_STORAGE_KEY]
           : "auto";
       }
-    }
+    },
   );
 }
 
