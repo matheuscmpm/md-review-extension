@@ -5,6 +5,7 @@
   "description": "Enhances GitHub PR diff view for Markdown files with rich preview, line-level comment indicators, and click-to-source navigation.",
   "permissions": ["storage", "tabs"],
   "background": {
+    "scripts": ["background.js"],
     "service_worker": "background.js"
   },
   "content_scripts": [
